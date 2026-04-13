@@ -3539,8 +3539,10 @@
                             statusHtml += `<div class="text-[10px] text-red-500 mt-2 italic max-w-[120px] whitespace-normal font-medium leading-tight">"${keterangan}"</div>`;
                         }
 
+                        // LOGIKA BARU: Label Ganda Pindah ke Bawah Nama
+                        let gandaHtml = '';
                         if (reg.nisn && nisnCounts[reg.nisn] > 1) {
-                            statusHtml += `<div class="text-[10px] text-purple-700 bg-purple-100 border border-purple-200 mt-2 py-1 px-2 rounded-lg font-bold max-w-[120px] mx-auto leading-tight shadow-sm whitespace-normal" title="Terdeteksi mendaftar di ${nisnCounts[reg.nisn]} lomba berbeda"><i class="fas fa-clone mr-1"></i>Daftar Ganda</div>`;
+                            gandaHtml = `<span class="text-[10px] text-purple-700 bg-purple-100 border border-purple-200 py-0.5 px-1.5 rounded font-bold shadow-sm whitespace-nowrap" title="Terdeteksi mendaftar di ${nisnCounts[reg.nisn]} lomba berbeda"><i class="fas fa-clone mr-1"></i>Ganda</span>`;
                         }
                         
                         // Proteksi Visual Tombol Cetak ID Card
@@ -3555,15 +3557,23 @@
                             <button onclick="openTolakModal('${reg.id}')" class="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-lg mx-0.5 shadow-sm" title="Batalkan (Beri Catatan)"><i class="fas fa-times"></i></button>
                             <button onclick="deletePeserta(${reg.id})" class="bg-gray-800 hover:bg-gray-900 text-white w-8 h-8 rounded-lg mx-0.5 shadow-sm" title="Hapus Permanen"><i class="fas fa-trash"></i></button>
                         `;
+                        
+                        // CLASS BARU (align-middle) agar vertikal sejajar rapi
                         return `<tr class="hover:bg-gray-50/80 transition-colors">
-                            <td class="p-4 text-center"><input type="checkbox" class="cb-peserta w-4 h-4 text-orange-500 rounded focus:ring-orange-400" value="${reg.id}"></td>
-                            <td class="p-4 text-gray-500 text-xs font-medium">${reg.timestamp ? reg.timestamp.split(' ')[0].replace(',', '') : '-'}</td>
-                            <td class="p-4"><p class="font-extrabold text-gray-800">${reg.namaSekolah}</p><p class="text-xs text-gray-500 font-mono">NPSN: ${reg.npsn}</p></td>
-                            <td class="p-4"><p class="font-bold text-gray-800">${reg.namaPeserta}</p><p class="text-xs text-orange-600 font-extrabold tracking-wider bg-orange-50 inline-block px-1.5 py-0.5 rounded mt-0.5">ID: ${reg.idPeserta}</p></td>
-                            <td class="p-4 text-gray-800 font-semibold text-sm">${reg.lomba}</td>
-                            <td class="p-4 text-center flex flex-col justify-center items-center h-full">${statusHtml}</td>
+                            <td class="p-4 text-center align-middle"><input type="checkbox" class="cb-peserta w-4 h-4 text-orange-500 rounded focus:ring-orange-400" value="${reg.id}"></td>
+                            <td class="p-4 text-gray-500 text-xs font-medium align-middle">${reg.timestamp ? reg.timestamp.split(' ')[0].replace(',', '') : '-'}</td>
+                            <td class="p-4 align-middle"><p class="font-extrabold text-gray-800">${reg.namaSekolah}</p><p class="text-xs text-gray-500 font-mono">NPSN: ${reg.npsn}</p></td>
+                            <td class="p-4 align-middle">
+                                <p class="font-bold text-gray-800">${reg.namaPeserta}</p>
+                                <div class="flex items-center gap-1.5 mt-1">
+                                    <span class="text-xs text-orange-600 font-extrabold tracking-wider bg-orange-50 inline-block px-1.5 py-0.5 rounded border border-orange-100">ID: ${reg.idPeserta}</span>
+                                    ${gandaHtml}
+                                </div>
+                            </td>
+                            <td class="p-4 text-gray-800 font-semibold text-sm align-middle">${reg.lomba}</td>
+                            <td class="p-4 text-center align-middle">${statusHtml}</td>
                             <td class="p-4 text-center whitespace-nowrap align-middle">
-                                <div class="flex justify-center items-center mt-2 h-full">
+                                <div class="flex justify-center items-center h-full">
                                     ${actionHtml}
                                 </div>
                             </td>
