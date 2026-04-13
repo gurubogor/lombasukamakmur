@@ -557,8 +557,8 @@
                         <p id="file-edit-foto-display" class="text-[10px] text-gray-400 mt-1 truncate">Opsional: Kosongkan jika foto lama benar.</p>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 mb-1">Upload Ulang Dokumen (Max 500KB)</label>
-                        <input type="file" id="edit-peserta-rapor" accept=".pdf, image/jpeg, image/png" onchange="validateFileSize(this, 'edit-rapor', 1000)" class="w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-100 file:text-orange-600 hover:file:bg-orange-200 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Upload Ulang Dokumen (PDF Max 500KB)</label>
+                        <input type="file" id="edit-peserta-rapor" accept=".pdf" onchange="validateFileSize(this, 'edit-rapor', 1000)" class="w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-100 file:text-orange-600 hover:file:bg-orange-200 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
                         <p id="file-edit-rapor-display" class="text-[10px] text-gray-400 mt-1 truncate">Opsional: Kosongkan jika dokumen lama benar.</p>
                     </div>
                 </div>
@@ -927,12 +927,7 @@
                                     <i class="fas fa-list-alt text-orange-500 mr-2"></i> Rekapitulasi Peserta Lomba
                                 </h3>
                                 <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                                    <input type="text" id="user-search-rekap" oninput="renderUserDashboard()" placeholder="Cari nama, cabang lomba..." class="flex-grow md:w-48 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-0 focus:border-orange-500 transition-colors bg-white">
-                                    <select id="user-limit-rekap" onchange="renderUserDashboard()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-0 focus:border-orange-500 bg-white cursor-pointer">
-                                        <option value="15">15 Baris</option>
-                                        <option value="30">30 Baris</option>
-                                        <option value="all">Semua Baris</option>
-                                    </select>
+                                    <input type="text" id="user-search-rekap" oninput="renderUserDashboard()" placeholder="Cari nama, cabang lomba..." class="flex-grow md:w-64 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-0 focus:border-orange-500 transition-colors bg-white shadow-sm">
                                 </div>
                             </div>
                             <div class="overflow-x-auto">
@@ -2315,7 +2310,6 @@
             if(count > 0) {
                 let html = '';
                 for(let i=0; i<count; i++) {
-                    // Tombol Hapus (X) sudah dihilangkan dari sini
                     html += `
                         <div id="participant-block-${i}" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-start bg-gray-50 p-4 border border-gray-200 rounded-xl mb-4 relative mt-3">
                             <span class="absolute -top-3 -left-3 bg-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md z-10">${i+1}</span>
@@ -2333,8 +2327,8 @@
                                 <p id="file-foto-${i}-display" class="text-[10px] text-gray-400 mt-1 truncate">Belum ada file</p>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-1">Upload Dokumen (Max 500KB)</label>
-                                <input type="file" id="reg-rapor-${i}" accept=".pdf, image/jpeg, image/png" required onchange="validateFileSize(this, 'rapor-${i}', 1000)" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-bold file:bg-orange-100 file:text-orange-600 hover:file:bg-orange-200 bg-white border border-gray-300 rounded-lg cursor-pointer">
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Upload Dokumen (PDF Max 500KB)</label>
+                                <input type="file" id="reg-rapor-${i}" accept=".pdf" required onchange="validateFileSize(this, 'rapor-${i}', 1000)" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-bold file:bg-orange-100 file:text-orange-600 hover:file:bg-orange-200 bg-white border border-gray-300 rounded-lg cursor-pointer">
                                 <p id="file-rapor-${i}-display" class="text-[10px] text-gray-400 mt-1 truncate">Belum ada file</p>
                             </div>
                         </div>`;
@@ -2506,11 +2500,9 @@
 
             let iconHtml = '';
             
-            // --- LOGIKA KUNCI PROFIL BELUM LENGKAP ---
             const isProfilLengkap = sekolah && sekolah.koordinator && sekolah.koordinator.trim() !== '' && sekolah.wa && String(sekolah.wa).trim() !== '';
 
             if (!isProfilLengkap) {
-                // Tampilkan Peringatan Profil Belum Lengkap
                 iconHtml = `
                     <div class="col-span-full p-8 text-center text-red-600 bg-red-50 rounded-3xl border border-red-200 shadow-sm">
                         <i class="fas fa-exclamation-triangle text-5xl mb-4 text-red-400 block mx-auto"></i>
@@ -2520,7 +2512,6 @@
                     </div>
                 `;
             } else if (sekolah) {
-                // Jika profil lengkap, jalankan logika pendaftaran seperti biasa
                 lombaConfigs.forEach(cfg => {
                     if(sekolah.aktif && sekolah.aktif.includes(cfg.id)) {
                         let isRegClosed = false; let deadlineStr = '';
@@ -2544,7 +2535,6 @@
                     }
                 });
                 
-                // Cek jika tidak ada lomba aktif sama sekali (dan profil sudah lengkap)
                 if(iconHtml === '') {
                      iconHtml = `<div class="col-span-full p-8 text-center text-gray-400 bg-white rounded-3xl border border-gray-100"><i class="fas fa-lock text-4xl mb-3"></i><p>Belum ada lomba yang diaktifkan untuk sekolah ini.</p></div>`;
                 }
@@ -2553,9 +2543,11 @@
             document.getElementById('daftar-icons').innerHTML = iconHtml;
 
             const searchTerm = (document.getElementById('user-search-rekap')?.value || '').toLowerCase();
-            const limitVal = document.getElementById('user-limit-rekap')?.value || '15';
-            let filteredRegs = [...allMyRegs].reverse();
+            
+            // Salin array data
+            let filteredRegs = [...allMyRegs];
 
+            // 1. Lakukan Pencarian Teks
             if (searchTerm) {
                 filteredRegs = filteredRegs.filter(r => 
                     String(r.namaPeserta || '').toLowerCase().includes(searchTerm) || 
@@ -2564,8 +2556,24 @@
                     String(r.nisn || '').toLowerCase().includes(searchTerm)
                 );
             }
-            if (limitVal !== 'all') filteredRegs = filteredRegs.slice(0, parseInt(limitVal));
 
+            // 2. Lakukan Pengurutan Berdasarkan Status (Ditolak -> Menunggu -> Terdaftar)
+            const statusWeights = { 'ditolak': 1, 'menunggu': 2, 'terdaftar': 3 };
+            
+            filteredRegs.sort((a, b) => {
+                const statusA = a.status.startsWith('ditolak') ? 'ditolak' : a.status;
+                const statusB = b.status.startsWith('ditolak') ? 'ditolak' : b.status;
+                
+                // Jika status berbeda, urutkan berdasarkan bobot status di atas
+                if (statusWeights[statusA] !== statusWeights[statusB]) {
+                    return statusWeights[statusA] - statusWeights[statusB];
+                }
+                
+                // Jika statusnya sama, maka yang terbaru (id terbesar) yang ditaruh di atas
+                return b.id - a.id; 
+            });
+
+            // Render ke tabel (limit baris sudah dihapus)
             if(filteredRegs.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-gray-400">Tidak ada data.</td></tr>`;
             } else {
@@ -3187,19 +3195,18 @@
                 ? `<img src="${cleanFotoUrl}" style="width: 120px; aspect-ratio: 3/4; object-fit: cover; border: 2px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);" referrerpolicy="no-referrer">` 
                 : `<div style="width: 120px; aspect-ratio: 3/4; border: 2px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 11px; text-align: center; border-radius: 8px;">Foto Kosong</div>`;
 
-            // 2. Tampilan QR Code dan Link Asli
-            const qrUrl = reg.docUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(reg.docUrl)}&margin=0` : '';
+            // 2. Tampilan Dokumen Embed (Langsung Terlihat)
             const docElement = reg.docUrl 
-                ? `<div style="display: flex; align-items: center; gap: 12px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc;">
-                    <img src="${qrUrl}" style="width: 65px; height: 65px; flex-shrink: 0;" alt="QR Code" referrerpolicy="no-referrer">
-                    <div style="display: flex; flex-direction: column; overflow: hidden;">
-                        <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Link Dokumen Berkas:</span>
-                        <a href="${reg.docUrl}" target="_blank" style="font-size: 11px; color: #2563eb; text-decoration: underline; word-break: break-all; line-height: 1.3;">
-                            ${reg.docUrl}
+                ? `<div style="width: 100%; height: 400px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f8fafc; margin-bottom: 8px;">
+                        <iframe src="${getEmbedUrl(reg.docUrl)}" style="width: 100%; height: 100%; border: none;"></iframe>
+                   </div>
+                   <div style="text-align: right;">
+                        <a href="${reg.docUrl}" target="_blank" style="display: inline-block; background-color: #eff6ff; color: #2563eb; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; text-decoration: none;">
+                            <i class="fas fa-external-link-alt"></i> Buka di Tab Baru
                         </a>
-                    </div>
                    </div>` 
-                : `<div style="padding: 10px; border: 1px dashed #cbd5e1; border-radius: 8px; text-align: center; color: #94a3b8; font-size: 12px;">Dokumen Tidak Tersedia</div>`;
+                : `<div style="padding: 20px; border: 2px dashed #cbd5e1; border-radius: 8px; text-align: center; color: #94a3b8; font-size: 12px; background: #f8fafc;">Dokumen Tidak Tersedia</div>`;
+
 
             // 3. Render Tampilan
             document.getElementById('view-peserta-content').innerHTML = `
@@ -3239,7 +3246,7 @@
                         </div>
                     </div>
 
-                    <div style="margin-top: auto;">
+                    <div style="margin-top: auto; padding-top: 10px; border-top: 1px solid #f1f5f9;">
                         <h4 style="font-size: 12px; font-weight: 800; color: #1e293b; margin-bottom: 8px; border-left: 4px solid #f97316; padding-left: 8px;">VERIFIKASI BERKAS DIGITAL</h4>
                         ${docElement}
                     </div>
