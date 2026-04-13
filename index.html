@@ -1118,12 +1118,17 @@
                             </div>
                             <div class="flex flex-wrap items-center gap-2 flex-grow lg:flex-grow-0 justify-end">
                                 <input type="text" id="admin-search-peserta" oninput="renderAdminDashboard()" placeholder="Cari nama, sekolah, lomba..." class="flex-grow md:w-32 border-2 border-gray-200 rounded-xl px-4 py-2 text-sm focus:border-orange-500 focus:ring-0 transition">
-                                <select id="admin-filter-sekolah" onchange="renderAdminDashboard()" class="w-full md:w-auto border-2 border-gray-200 rounded-xl px-4 py-2 text-sm focus:border-orange-500 focus:ring-0 transition"><option value="">Semua Sekolah</option></select>
-                                <select id="admin-filter-lomba" onchange="renderAdminDashboard()" class="w-full md:w-auto border-2 border-gray-200 rounded-xl px-4 py-2 text-sm focus:border-orange-500 focus:ring-0 transition"><option value="">Semua Lomba</option></select>
+                                
+                                <input type="text" id="admin-filter-sekolah" list="list-admin-sekolah" onchange="renderAdminDashboard()" oninput="renderAdminDashboard()" placeholder="Semua Sekolah" class="w-full md:w-48 border-2 border-gray-200 rounded-xl px-4 py-2 text-sm focus:border-orange-500 focus:ring-0 transition">
+                                <datalist id="list-admin-sekolah"></datalist>
+                                
+                                <input type="text" id="admin-filter-lomba" list="list-admin-lomba" onchange="renderAdminDashboard()" oninput="renderAdminDashboard()" placeholder="Semua Lomba" class="w-full md:w-48 border-2 border-gray-200 rounded-xl px-4 py-2 text-sm focus:border-orange-500 focus:ring-0 transition">
+                                <datalist id="list-admin-lomba"></datalist>
+                                
                                 <select id="admin-limit-peserta" onchange="renderAdminDashboard()" class="w-full md:w-auto border-2 border-gray-200 rounded-xl px-4 py-2 text-sm focus:border-orange-500 focus:ring-0 transition">
+                                    <option value="25">25 Baris</option>
                                     <option value="50">50 Baris</option>
                                     <option value="100">100 Baris</option>
-                                    <option value="500">500 Baris</option>
                                     <option value="all">Semua Baris</option>
                                 </select>
                                 <button onclick="openCetakPesertaModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-bold rounded-xl transition shadow-md whitespace-nowrap ml-1"><i class="fas fa-file-pdf mr-1"></i> Cetak PDF</button>
@@ -3438,10 +3443,15 @@
             const filterLomba = document.getElementById('admin-filter-lomba')?.value || '';
             const limitRow = document.getElementById('admin-limit-peserta')?.value || '50';
 
-            const selectSekolah = document.getElementById('admin-filter-sekolah');
-            if (selectSekolah && selectSekolah.options.length <= 1) Object.values(DATA_SCHOOLS).forEach(s => { selectSekolah.innerHTML += `<option value="${s.nama}">${s.nama}</option>`; });
-            const selectLomba = document.getElementById('admin-filter-lomba');
-            if (selectLomba && selectLomba.options.length <= 1) Object.keys(LOMBA_CATEGORIES).forEach(kat => LOMBA_CATEGORIES[kat].forEach(l => { selectLomba.innerHTML += `<option value="${kat} - ${l.name}">${kat} - ${l.name}</option>`; }));
+            // PENGISIAN DATALIST FILTER
+            const datalistSekolah = document.getElementById('list-admin-sekolah');
+            if (datalistSekolah && datalistSekolah.options.length === 0) {
+                Object.values(DATA_SCHOOLS).forEach(s => { datalistSekolah.innerHTML += `<option value="${s.nama}"></option>`; });
+            }
+            const datalistLomba = document.getElementById('list-admin-lomba');
+            if (datalistLomba && datalistLomba.options.length === 0) {
+                Object.keys(LOMBA_CATEGORIES).forEach(kat => LOMBA_CATEGORIES[kat].forEach(l => { datalistLomba.innerHTML += `<option value="${kat} - ${l.name}"></option>`; }));
+            }
             
             // Hitung Frekuensi NISN untuk mendeteksi pendaftaran ganda
             const nisnCounts = {};
@@ -3451,7 +3461,18 @@
                 }
             });
 
-            let displayRegs = [...DATA_REGISTRATIONS].reverse(); 
+            let displayRegs = [...DATA_REGISTRATIONS]; 
+            
+            // URUTAN DEFAULT: Belum Verifikasi -> Berkas Tidak Lengkap -> Terverifikasi
+            const statusWeights = { 'menunggu': 1, 'ditolak': 2, 'terdaftar': 3 };
+            displayRegs.sort((a, b) => {
+                const statA = a.status.startsWith('ditolak') ? 'ditolak' : a.status;
+                const statB = b.status.startsWith('ditolak') ? 'ditolak' : b.status;
+                if (statusWeights[statA] !== statusWeights[statB]) {
+                    return statusWeights[statA] - statusWeights[statB];
+                }
+                return b.id - a.id; // Sorting ID agar yg terbaru tetap di atas di dalam grup yang sama
+            });
             
             if(currentState.user.role === 'pic' && currentState.user.cabang !== 'Semua') {
                 displayRegs = displayRegs.filter(r => r.lomba === currentState.user.cabang);
@@ -3493,14 +3514,18 @@
                             statusHtml += `<div class="text-[10px] text-red-500 mt-2 italic max-w-[120px] whitespace-normal font-medium leading-tight">"${keterangan}"</div>`;
                         }
 
-                        // Penambahan Notifikasi Lomba Ganda berdasarkan NISN
                         if (reg.nisn && nisnCounts[reg.nisn] > 1) {
                             statusHtml += `<div class="text-[10px] text-purple-700 bg-purple-100 border border-purple-200 mt-2 py-1 px-2 rounded-lg font-bold max-w-[120px] mx-auto leading-tight shadow-sm whitespace-normal" title="Terdeteksi mendaftar di ${nisnCounts[reg.nisn]} lomba berbeda"><i class="fas fa-clone mr-1"></i>Daftar Ganda</div>`;
                         }
                         
+                        // Proteksi Visual Tombol Cetak ID Card
+                        let btnCetakId = statusClean === 'terdaftar' 
+                            ? `<button onclick="printSingleIdCard(${reg.id})" class="bg-indigo-500 hover:bg-indigo-600 text-white w-8 h-8 rounded-lg mx-0.5 shadow-sm" title="Cetak ID Card"><i class="fas fa-print"></i></button>`
+                            : `<button onclick="printSingleIdCard(${reg.id})" class="bg-gray-300 text-gray-500 w-8 h-8 rounded-lg mx-0.5 shadow-sm cursor-not-allowed" title="Tidak dapat mencetak ID. Peserta Belum Terverifikasi"><i class="fas fa-print"></i></button>`;
+
                         let actionHtml = `
                             <button onclick="viewPesertaData(${reg.id})" class="bg-blue-500 hover:bg-blue-600 text-white w-8 h-8 rounded-lg mx-0.5 shadow-sm" title="Lihat Detail Peserta"><i class="fas fa-eye"></i></button>
-                            <button onclick="printSingleIdCard(${reg.id})" class="bg-indigo-500 hover:bg-indigo-600 text-white w-8 h-8 rounded-lg mx-0.5 shadow-sm" title="Cetak ID Card"><i class="fas fa-print"></i></button>
+                            ${btnCetakId}
                             <button onclick="updateStatus(${reg.id}, 'terdaftar')" class="bg-green-500 hover:bg-green-600 text-white w-8 h-8 rounded-lg mx-0.5 shadow-sm" title="Verifikasi Selesai"><i class="fas fa-check"></i></button>
                             <button onclick="openTolakModal('${reg.id}')" class="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-lg mx-0.5 shadow-sm" title="Batalkan (Beri Catatan)"><i class="fas fa-times"></i></button>
                             <button onclick="deletePeserta(${reg.id})" class="bg-gray-800 hover:bg-gray-900 text-white w-8 h-8 rounded-lg mx-0.5 shadow-sm" title="Hapus Permanen"><i class="fas fa-trash"></i></button>
@@ -5418,15 +5443,48 @@
         // --- CETAK ID CARD PESERTA (PDF) ---
         function printSingleIdCard(id) { 
             const reg = DATA_REGISTRATIONS.find(r => r.id === id); 
-            if(reg) generatePdfIdCard([reg], true); 
+            if(reg) {
+                if(reg.status !== 'terdaftar') {
+                    showModal('Akses Ditolak', 'Hanya peserta dengan status "Terverifikasi" yang dapat dicetak ID Card-nya.', 'error');
+                    return;
+                }
+                generatePdfIdCard([reg], true); 
+            }
         }
 
         function bulkPrintIdCard() {
             const checkedBoxes = document.querySelectorAll('.cb-peserta:checked');
-            if (checkedBoxes.length === 0) { showModal('Peringatan', 'Harap centang peserta yang akan dicetak ID Card-nya.', 'error'); return; }
+            if (checkedBoxes.length === 0) { 
+                showModal('Peringatan', 'Harap centang peserta yang akan dicetak ID Card-nya.', 'error'); 
+                return; 
+            }
+            
             let selectedRegs = [];
-            checkedBoxes.forEach(cb => { const reg = DATA_REGISTRATIONS.find(r => r.id === parseInt(cb.value)); if(reg) selectedRegs.push(reg); });
-            generatePdfIdCard(selectedRegs, true);
+            let skippedCount = 0;
+            
+            checkedBoxes.forEach(cb => { 
+                const reg = DATA_REGISTRATIONS.find(r => r.id === parseInt(cb.value)); 
+                if(reg) {
+                    if(reg.status === 'terdaftar') {
+                        selectedRegs.push(reg); 
+                    } else {
+                        skippedCount++;
+                    }
+                }
+            });
+
+            if (selectedRegs.length === 0) {
+                showModal('Gagal', 'Tidak ada peserta Terverifikasi dalam pilihan Anda. Cetak ID dibatalkan.', 'error');
+                return;
+            }
+
+            if (skippedCount > 0) {
+                // Notifikasi peringatan namun tetap memproses yang terverifikasi
+                showModal('Peringatan', `${skippedCount} peserta dilewati karena belum diverifikasi. Memproses ${selectedRegs.length} ID Card...`, 'info', true, 2000);
+                setTimeout(() => generatePdfIdCard(selectedRegs, true), 2000);
+            } else {
+                generatePdfIdCard(selectedRegs, true);
+            }
         }
 
         function generateQRBase64(text) {
