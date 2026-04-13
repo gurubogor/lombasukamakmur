@@ -3443,6 +3443,14 @@
             const selectLomba = document.getElementById('admin-filter-lomba');
             if (selectLomba && selectLomba.options.length <= 1) Object.keys(LOMBA_CATEGORIES).forEach(kat => LOMBA_CATEGORIES[kat].forEach(l => { selectLomba.innerHTML += `<option value="${kat} - ${l.name}">${kat} - ${l.name}</option>`; }));
             
+            // Hitung Frekuensi NISN untuk mendeteksi pendaftaran ganda
+            const nisnCounts = {};
+            DATA_REGISTRATIONS.forEach(r => {
+                if (r.nisn && String(r.nisn).trim() !== '') {
+                    nisnCounts[r.nisn] = (nisnCounts[r.nisn] || 0) + 1;
+                }
+            });
+
             let displayRegs = [...DATA_REGISTRATIONS].reverse(); 
             
             if(currentState.user.role === 'pic' && currentState.user.cabang !== 'Semua') {
@@ -3484,6 +3492,11 @@
                         if (isDitolak && keterangan) {
                             statusHtml += `<div class="text-[10px] text-red-500 mt-2 italic max-w-[120px] whitespace-normal font-medium leading-tight">"${keterangan}"</div>`;
                         }
+
+                        // Penambahan Notifikasi Lomba Ganda berdasarkan NISN
+                        if (reg.nisn && nisnCounts[reg.nisn] > 1) {
+                            statusHtml += `<div class="text-[10px] text-purple-700 bg-purple-100 border border-purple-200 mt-2 py-1 px-2 rounded-lg font-bold max-w-[120px] mx-auto leading-tight shadow-sm whitespace-normal" title="Terdeteksi mendaftar di ${nisnCounts[reg.nisn]} lomba berbeda"><i class="fas fa-clone mr-1"></i>Daftar Ganda</div>`;
+                        }
                         
                         let actionHtml = `
                             <button onclick="viewPesertaData(${reg.id})" class="bg-blue-500 hover:bg-blue-600 text-white w-8 h-8 rounded-lg mx-0.5 shadow-sm" title="Lihat Detail Peserta"><i class="fas fa-eye"></i></button>
@@ -3498,8 +3511,12 @@
                             <td class="p-4"><p class="font-extrabold text-gray-800">${reg.namaSekolah}</p><p class="text-xs text-gray-500 font-mono">NPSN: ${reg.npsn}</p></td>
                             <td class="p-4"><p class="font-bold text-gray-800">${reg.namaPeserta}</p><p class="text-xs text-orange-600 font-extrabold tracking-wider bg-orange-50 inline-block px-1.5 py-0.5 rounded mt-0.5">ID: ${reg.idPeserta}</p></td>
                             <td class="p-4 text-gray-800 font-semibold text-sm">${reg.lomba}</td>
-                            <td class="p-4 text-center">${statusHtml}</td>
-                            <td class="p-4 text-center flex justify-center items-center h-full mt-2">${actionHtml}</td>
+                            <td class="p-4 text-center flex flex-col justify-center items-center h-full">${statusHtml}</td>
+                            <td class="p-4 text-center whitespace-nowrap align-middle">
+                                <div class="flex justify-center items-center mt-2 h-full">
+                                    ${actionHtml}
+                                </div>
+                            </td>
                         </tr>`;
                     }).join('');
                     const selectAllBtn = document.getElementById('selectAllPeserta');
