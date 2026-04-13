@@ -73,6 +73,37 @@
         </div>
     </div>
 
+    <div id="modalCetakPesertaAdmin" class="fixed inset-0 bg-black bg-opacity-60 z-[80] hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-indigo-100">
+            <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 class="font-extrabold text-lg text-gray-800"><i class="fas fa-print text-indigo-500 mr-2"></i> Cetak Data Peserta</h3>
+                <button onclick="closeFormModal('modalCetakPesertaAdmin')" class="text-gray-400 hover:text-red-500 text-xl transition"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Filter Status</label>
+                    <select id="cetak-peserta-status" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-indigo-500 focus:ring-0 bg-gray-50 focus:bg-white transition cursor-pointer">
+                        <option value="all">Semua Pendaftar</option>
+                        <option value="terdaftar">Terverifikasi</option>
+                        <option value="ditolak">Tidak Lengkap (Ditolak)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Filter Sekolah</label>
+                    <select id="cetak-peserta-sekolah" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-indigo-500 focus:ring-0 bg-gray-50 focus:bg-white transition cursor-pointer">
+                        <option value="all">Semua Sekolah</option>
+                    </select>
+                </div>
+                <div class="pt-4 border-t border-gray-100 flex justify-end space-x-3">
+                    <button type="button" onclick="closeFormModal('modalCetakPesertaAdmin')" class="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition">Batal</button>
+                    <button onclick="executeCetakPeserta()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-bold transition shadow-lg shadow-indigo-600/30 flex items-center">
+                        <i class="fas fa-download mr-2"></i> Buat PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Modal Cetak Rekap Sekolah -->
     <div id="modalCetakRekapAdmin" class="fixed inset-0 bg-black bg-opacity-60 z-[80] hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-indigo-100">
@@ -513,7 +544,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Nama Peserta</label>
-                    <input type="text" id="edit-peserta-nama" required class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-orange-500 focus:ring-0 bg-gray-50 focus:bg-white transition">
+                    <input type="text" id="edit-peserta-nama" oninput="this.value = this.value.toUpperCase()" style="text-transform: uppercase;" required class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-orange-500 focus:ring-0 bg-gray-50 focus:bg-white transition">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">NISN</label>
@@ -975,7 +1006,7 @@
                                     </div>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1">Nama Operator <span class="text-red-500">*</span></label>
+                                            <label class="block text-sm font-bold text-gray-700 mb-1">Nama Koordinator Lomba <span class="text-red-500">*</span></label>
                                             <input type="text" id="profil-koor" required class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-0 focus:border-orange-500 bg-gray-50 focus:bg-white transition-colors" placeholder="Nama Lengkap">
                                         </div>
                                         <div>
@@ -1079,6 +1110,7 @@
                                 <button onclick="setFilterPeserta('semua')" id="btn-filter-semua" class="px-3 py-1.5 text-xs font-bold rounded-md bg-white shadow-sm text-orange-600 transition-all">Semua</button>
                                 <button onclick="setFilterPeserta('menunggu')" id="btn-filter-menunggu" class="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-800 transition-all">Belum Verifikasi</button>
                                 <button onclick="setFilterPeserta('terdaftar')" id="btn-filter-terdaftar" class="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-800 transition-all">Terverifikasi</button>
+                                <button onclick="setFilterPeserta('ditolak')" id="btn-filter-ditolak" class="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-800 transition-all">Tidak Lengkap</button>
                             </div>
                         </div>
                         <div class="flex flex-wrap gap-3 items-center justify-between">
@@ -1099,6 +1131,7 @@
                                     <option value="500">500 Baris</option>
                                     <option value="all">Semua Baris</option>
                                 </select>
+                                <button onclick="openCetakPesertaModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-bold rounded-xl transition shadow-md whitespace-nowrap ml-1"><i class="fas fa-file-pdf mr-1"></i> Cetak PDF</button>
                             </div>
                         </div>
                     </div>
@@ -2282,16 +2315,13 @@
             if(count > 0) {
                 let html = '';
                 for(let i=0; i<count; i++) {
-                    // Tombol Hapus (X) untuk form peserta ke-2 dan seterusnya
-                    const deleteBtn = i > 0 ? `<button type="button" onclick="document.getElementById('participant-block-${i}').remove()" class="absolute -top-3 -right-3 bg-red-500 hover:bg-red-600 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs shadow-md transition-colors z-10" title="Hapus Form Peserta Ini"><i class="fas fa-times"></i></button>` : '';
-
+                    // Tombol Hapus (X) sudah dihilangkan dari sini
                     html += `
                         <div id="participant-block-${i}" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-start bg-gray-50 p-4 border border-gray-200 rounded-xl mb-4 relative mt-3">
                             <span class="absolute -top-3 -left-3 bg-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md z-10">${i+1}</span>
-                            ${deleteBtn}
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 mb-1">Nama Peserta <span class="text-red-500">*</span></label>
-                                <input type="text" id="reg-nama-${i}" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-0 focus:border-orange-500 text-sm bg-white">
+                                <input type="text" id="reg-nama-${i}" oninput="this.value = this.value.toUpperCase()" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-0 focus:border-orange-500 text-sm bg-white">
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 mb-1">NISN <span class="text-red-500">*</span></label>
@@ -3069,22 +3099,37 @@
                     }
                     await syncUpdateToServer({ action: 'update_status_batch', ids: idsToUpdate, status: statusStr }, false);
                     document.getElementById('selectAllPeserta').checked = false;
+                    
+                    showModal('Sukses', 'Peserta ditolak dengan catatan secara masal.', 'success', true, 2000);
                 } else {
                     const id = parseInt(targetId);
                     const index = DATA_REGISTRATIONS.findIndex(r => r.id === id);
                     if(index !== -1) {
                         DATA_REGISTRATIONS[index].status = statusStr;
-                        
-                        // TAMBAHKAN BARIS INI AGAR SERVER TAHU INI ADALAH PERINTAH UPDATE
                         DATA_REGISTRATIONS[index].action = 'update'; 
                         
                         await syncUpdateToServer(DATA_REGISTRATIONS[index], false);
+
+                        // --- LOGIKA KIRIM WA OTOMATIS ---
+                        const reg = DATA_REGISTRATIONS[index];
+                        const school = DATA_SCHOOLS[reg.npsn];
+                        
+                        if (school && school.wa) {
+                            let cleanNum = String(school.wa).replace(/[^0-9]/g, '');
+                            if(cleanNum.startsWith('0')) cleanNum = '62' + cleanNum.substring(1);
+                            
+                            const waMessage = `Pendaftaran ${reg.namaPeserta}, Cabang Lomba ${reg.lomba}, *DITOLAK* karena berkas tidak sesuai ketentuan yaitu ${ket}. Segera perbaiki sebelum waktu pendaftaran berakhir.`;
+                            const waUrl = `https://wa.me/${cleanNum}?text=${encodeURIComponent(waMessage)}`;
+                            
+                            window.open(waUrl, '_blank');
+                        }
+                        // ---------------------------------
                     }
+                    showModal('Sukses', 'Peserta ditolak dan pesan WA telah disiapkan.', 'success', true, 2000);
                 }
                 
                 closeFormModal('modalTolakPeserta');
                 renderAdminDashboard();
-                showModal('Sukses', 'Peserta ditolak dengan catatan.', 'success', true, 2000);
             });
         }
 
@@ -3094,7 +3139,7 @@
                 const index = DATA_REGISTRATIONS.findIndex(r => r.id === id);
                 
                 if(index !== -1) {
-                    DATA_REGISTRATIONS[index].namaPeserta = document.getElementById('edit-peserta-nama').value;
+                    DATA_REGISTRATIONS[index].namaPeserta = document.getElementById('edit-peserta-nama').value.toUpperCase();
                     DATA_REGISTRATIONS[index].nisn = document.getElementById('edit-peserta-nisn').value;
                     DATA_REGISTRATIONS[index].status = 'menunggu'; 
                     
@@ -3212,10 +3257,64 @@
         }
 
         // --- DASHBOARD ADMIN ---
+        function submitTolakPeserta(e) {
+            withLoadingButton(e, 'Memproses...', async () => {
+                const targetId = document.getElementById('tolak-target-id').value;
+                const ket = document.getElementById('tolak-keterangan').value.trim();
+                const statusStr = `ditolak|||${ket}`;
+                
+                if (targetId === 'bulk') {
+                    const checkedBoxes = document.querySelectorAll('.cb-peserta:checked');
+                    let idsToUpdate = [];
+                    for (let cb of checkedBoxes) {
+                        const id = parseInt(cb.value);
+                        idsToUpdate.push(id);
+                        const index = DATA_REGISTRATIONS.findIndex(r => r.id === id);
+                        if(index !== -1) DATA_REGISTRATIONS[index].status = statusStr;
+                    }
+                    await syncUpdateToServer({ action: 'update_status_batch', ids: idsToUpdate, status: statusStr }, false);
+                    document.getElementById('selectAllPeserta').checked = false;
+                    
+                    showModal('Sukses', 'Peserta ditolak dengan catatan secara masal.', 'success', true, 2000);
+                } else {
+                    const id = parseInt(targetId);
+                    const index = DATA_REGISTRATIONS.findIndex(r => r.id === id);
+                    if(index !== -1) {
+                        DATA_REGISTRATIONS[index].status = statusStr;
+                        DATA_REGISTRATIONS[index].action = 'update'; 
+                        
+                        await syncUpdateToServer(DATA_REGISTRATIONS[index], false);
+
+                        // --- LOGIKA KIRIM WA OTOMATIS ---
+                        const reg = DATA_REGISTRATIONS[index];
+                        const school = DATA_SCHOOLS[reg.npsn];
+                        
+                        if (school && school.wa) {
+                            let cleanNum = String(school.wa).replace(/[^0-9]/g, '');
+                            if(cleanNum.startsWith('0')) cleanNum = '62' + cleanNum.substring(1);
+                            
+                            const waMessage = `Pendaftaran ${reg.namaPeserta}, ${reg.lomba}, *DITOLAK* karena berkas tidak sesuai ketentuan yaitu ${ket}. Segera perbaiki sebelum waktu pendaftaran berakhir.`;
+                            const waUrl = `https://wa.me/${cleanNum}?text=${encodeURIComponent(waMessage)}`;
+                            
+                            window.open(waUrl, '_blank');
+                        }
+                        // ---------------------------------
+                    }
+                    showModal('Sukses', 'Peserta ditolak dan pesan WA telah disiapkan.', 'success', true, 2000);
+                }
+                
+                closeFormModal('modalTolakPeserta');
+                renderAdminDashboard();
+            });
+        }
+
         function setFilterPeserta(filter) {
             adminPesertaFilter = filter;
             const classes = { active: 'px-3 py-1.5 text-xs font-bold rounded-md bg-white shadow-sm text-orange-600 transition-all', inactive: 'px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-800 transition-all' };
-            ['semua', 'menunggu', 'terdaftar'].forEach(f => document.getElementById('btn-filter-' + f).className = (filter === f) ? classes.active : classes.inactive);
+            ['semua', 'menunggu', 'terdaftar', 'ditolak'].forEach(f => {
+                const btn = document.getElementById('btn-filter-' + f);
+                if (btn) btn.className = (filter === f) ? classes.active : classes.inactive;
+            });
             renderAdminDashboard();
         }
 
@@ -4546,6 +4645,157 @@
             }
         }
 
+        // --- FUNGSI CETAK DATA PESERTA (ADMIN) ---
+        function openCetakPesertaModal() {
+            const selectSekolah = document.getElementById('cetak-peserta-sekolah');
+            selectSekolah.innerHTML = '<option value="all">Semua Sekolah</option>';
+            const schoolNames = [...new Set(DATA_REGISTRATIONS.map(r => r.namaSekolah))].sort();
+            schoolNames.forEach(nama => {
+                selectSekolah.innerHTML += `<option value="${nama}">${nama}</option>`;
+            });
+            openFormModal('modalCetakPesertaAdmin');
+        }
+
+        function executeCetakPeserta() {
+            const status = document.getElementById('cetak-peserta-status').value;
+            const sekolah = document.getElementById('cetak-peserta-sekolah').value;
+            closeFormModal('modalCetakPesertaAdmin');
+            generatePdfDataPeserta(status, sekolah);
+        }
+
+        async function generatePdfDataPeserta(statusFilter, sekolahFilter) {
+            showModal('Mempersiapkan PDF...', 'Membuat Dokumen Data Peserta...', 'info', true, 0);
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                
+                // Ambil Kop
+                const logoB64 = await fetchLogoBase64('https://i.ibb.co.com/k2CSqMNP/Screenshot-2026-04-10-230641.png');
+                if(logoB64) doc.addImage(logoB64, 'PNG', 10, 10, 190, 30); 
+                doc.setLineWidth(0.8); doc.line(10, 42, 200, 42);
+                
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(16);
+                doc.text("DATA PENDAFTAR LOMBA", 105, 52, { align: "center" });
+                
+                // Subtitle sesuai filter
+                let subtitle = "Tingkat Kecamatan Sukamakmur Tahun 2026";
+                if(sekolahFilter !== 'all') subtitle = `Sekolah: ${sekolahFilter.toUpperCase()}`;
+                
+                doc.setFontSize(11);
+                doc.text(subtitle, 105, 58, { align: "center" });
+                
+                let subKet = `Status: ${statusFilter === 'all' ? 'Semua Pendaftar' : (statusFilter === 'terdaftar' ? 'Terverifikasi' : 'Tidak Lengkap / Ditolak')}`;
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10);
+                doc.text(subKet, 105, 63, { align: "center" });
+
+                // Filter Data Registrasi
+                let filteredData = DATA_REGISTRATIONS;
+                if(statusFilter !== 'all') {
+                    if(statusFilter === 'ditolak') filteredData = filteredData.filter(r => r.status.startsWith('ditolak'));
+                    else filteredData = filteredData.filter(r => r.status === statusFilter);
+                }
+                if(sekolahFilter !== 'all') {
+                    filteredData = filteredData.filter(r => r.namaSekolah === sekolahFilter);
+                }
+                
+                // Sorting data berdasarkan Nama Sekolah -> Cabang Lomba -> Nama Peserta
+                const categoryOrder = ['FLS3N', 'O2SN & Oltrad', 'FTBI', 'Pentas PAI'];
+                filteredData.sort((a, b) => {
+                    // 1. Urutkan berdasarkan Sekolah
+                    if (a.namaSekolah !== b.namaSekolah) {
+                        return a.namaSekolah.localeCompare(b.namaSekolah);
+                    }
+                    
+                    // 2. Jika Sekolah sama, urutkan berdasarkan Kategori Cabang Lomba
+                    const catA = a.lomba.split(' - ')[0];
+                    const catB = b.lomba.split(' - ')[0];
+                    if (catA !== catB) {
+                        return categoryOrder.indexOf(catA) - categoryOrder.indexOf(catB);
+                    }
+                    
+                    // 3. Jika Kategori Lomba sama, urutkan berdasarkan nama lombanya
+                    if (a.lomba !== b.lomba) {
+                        return a.lomba.localeCompare(b.lomba);
+                    }
+
+                    // 4. Jika masih sama, urutkan berdasarkan Nama Peserta
+                    return a.namaPeserta.localeCompare(b.namaPeserta);
+                });
+
+                // Rendering Table Header
+                let curY = 70;
+                const drawTableHeader = (yPos) => {
+                    doc.setFillColor(230, 230, 230);
+                    doc.setLineWidth(0.3);
+                    doc.rect(10, yPos, 190, 8, 'F');
+                    doc.rect(10, yPos, 190, 8);
+                    doc.setFontSize(9);
+                    doc.setFont("helvetica", "bold");
+                    doc.text("No", 15, yPos + 5.5, { align: "center" });
+                    doc.text("Nama Peserta", 45, yPos + 5.5, { align: "center" });
+                    doc.text("Asal Sekolah", 105, yPos + 5.5, { align: "center" });
+                    doc.text("Cabang Lomba", 155, yPos + 5.5, { align: "center" });
+                    doc.text("Status", 185, yPos + 5.5, { align: "center" });
+                };
+
+                drawTableHeader(curY);
+                curY += 8;
+                doc.setFont("helvetica", "normal");
+
+                if(filteredData.length === 0) {
+                    doc.rect(10, curY, 190, 10);
+                    doc.text("Tidak ada data peserta yang cocok dengan filter.", 105, curY + 6, {align: "center"});
+                } else {
+                    filteredData.forEach((r, idx) => {
+                        // Fitur Auto Height baris
+                        let txtNama = doc.splitTextToSize(r.namaPeserta, 45);
+                        let txtSekolah = doc.splitTextToSize(r.namaSekolah, 45);
+                        let txtLomba = doc.splitTextToSize(r.lomba, 35);
+                        
+                        let maxLines = Math.max(txtNama.length, txtSekolah.length, txtLomba.length);
+                        let rowHeight = (maxLines * 4) + 4;
+                        
+                        if (curY + rowHeight > 275) {
+                            doc.addPage();
+                            curY = 20;
+                            drawTableHeader(curY);
+                            curY += 8;
+                            doc.setFont("helvetica", "normal");
+                        }
+
+                        doc.rect(10, curY, 190, rowHeight);
+                        doc.text(String(idx + 1), 15, curY + 5.5, { align: "center" });
+                        doc.text(txtNama, 23, curY + 5.5);
+                        doc.text(txtSekolah, 83, curY + 5.5);
+                        doc.text(txtLomba, 138, curY + 5.5);
+                        
+                        let statText = r.status.startsWith('ditolak') ? 'Ditolak' : (r.status === 'terdaftar' ? 'Terverifikasi' : 'Menunggu');
+                        doc.text(statText, 185, curY + 5.5, { align: "center" });
+
+                        // Vertikal lines
+                        doc.line(20, curY, 20, curY + rowHeight);
+                        doc.line(80, curY, 80, curY + rowHeight);
+                        doc.line(135, curY, 135, curY + rowHeight);
+                        doc.line(175, curY, 175, curY + rowHeight);
+
+                        curY += rowHeight;
+                    });
+                }
+
+                const finalName = `Data_Peserta_${statusFilter}_${sekolahFilter.replace(/\s+/g, '_')}.pdf`;
+                doc.save(finalName);
+                closeModal();
+                showModal('Sukses', 'File PDF Data Peserta berhasil diunduh.', 'success', true, 2000);
+
+            } catch(err) {
+                closeModal();
+                console.error(err);
+                showModal('Error', 'Gagal memproses file PDF.', 'error');
+            }
+        }
+
         // 1. FUNGSI UNTUK MEMBUKA MODAL PILIHAN CETAK REKAP
         function cetakRekapPendaftarPDF() {
             const selectSekolah = document.getElementById('cetak-rekap-sekolah-select');
@@ -5189,8 +5439,8 @@
                 const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [220, 20] });
                 const gradBg = getGradientBase64(1100, 100); 
                 
-                const baseUrl = window.location.href.split('index.html')[0].split('?')[0].split('#')[0];
-                const targetPage = baseUrl + "cek-peserta.html?id=";
+                // URL tujuan untuk QR Code yang baru
+                const targetPage = "https://gurubogor.github.io/cekdatapeserta/?id=";
                 const logoB64 = await fetchLogoBase64('https://i.ibb.co.com/Wvf6CP6Y/Cover-Lomba-2.png');
 
                 for (let i = 0; i < registrations.length; i++) {
