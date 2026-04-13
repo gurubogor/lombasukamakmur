@@ -4808,6 +4808,22 @@
                     });
                 }
 
+                // --- BAGIAN TAMBAHAN KETERANGAN WAKTU DOWNLOAD ---
+                const totalPages = doc.internal.getNumberOfPages();
+                const now = new Date();
+                const strWaktu = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' pukul ' + now.toLocaleTimeString('id-ID');
+                
+                doc.setFont("helvetica", "italic");
+                doc.setFontSize(8);
+                doc.setTextColor(120, 120, 120);
+
+                for (let i = 1; i <= totalPages; i++) {
+                    doc.setPage(i);
+                    // Teks footer diposisikan di kiri bawah (X: 10, Y: 290)
+                    doc.text(`Berkas di download pada tgl dan jam ${strWaktu}`, 10, 290);
+                }
+                // --------------------------------------------------
+
                 const finalName = `Data_Peserta_${statusFilter}_${sekolahFilter.replace(/\s+/g, '_')}.pdf`;
                 doc.save(finalName);
                 closeModal();
