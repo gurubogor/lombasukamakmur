@@ -6824,125 +6824,495 @@
             } catch(e) { console.error(e); closeModal(); showModal('Error', 'Gagal cetak PDF', 'error'); }
         }
 
+        // 3. SK KEMENANGAN (POTRAIT DENGAN LAMPIRAN)
         async function generateSKKemenanganPDF() {
             showModal('Mempersiapkan PDF...', 'Membuat SK Penetapan Juara...', 'info', true, 0);
             try {
                 const { jsPDF } = window.jspdf;
-                // Ukuran kertas A4 (210x297mm)
                 const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
                 const logoB64 = await fetchLogoBase64('https://i.ibb.co.com/k2CSqMNP/Screenshot-2026-04-10-230641.png');
                 
                 const cert = DATA_SETTINGS.sertifikat || {};
-                const tglSK = "25 April 2026";
-                const noSK = "009/PAN/IV/2026";
+                const rawDate = new Date();
+                const tglSK = rawDate.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+                const noSK = "009/PAN/IV/2026"; 
 
-                // Definisi Margin (10 mm)
-                const margin = 10;
+                // --- PENGATURAN MARGIN: Kanan-Kiri 15mm, Atas-Bawah 10mm ---
+                const marginX = 15;
+                const marginY = 10;
                 const pageWidth = 210;
-                const contentWidth = pageWidth - (margin * 2); // 190 mm
-                const centerX = pageWidth / 2; // 105 mm
+                const pageHeight = 297;
+                const contentWidth = pageWidth - (marginX * 2); // 180 mm
+                const centerX = pageWidth / 2; 
+                const bottomMarginY = pageHeight - marginY; 
+
+                // --- PENGATURAN SPASI 1.3 ---
+                const lineHeightFactor = 1.3;
+                const fontSizeMm = 10 * 0.352777778; // 10pt ke mm
+                const lineHeightMm = fontSizeMm * lineHeightFactor; // ~4.58 mm per baris
+
+                // ==========================================
+                // HELPER: BLOK PENGESAHAN (TANDA TANGAN)
+                // ==========================================
+                const drawSignatureBlock = (yPos) => {
+                    const leftColX = marginX + 5; 
+                    const rightColX = pageWidth - marginX - 65; 
+
+                    doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+                    
+                    // Baris 1
+                    doc.text("Ditetapkan di", rightColX, yPos); 
+                    doc.text(": Sukamakmur", rightColX + 24, yPos);
+                    
+                    // Baris 2: Mengetahui & Pada Tanggal (SEJAJAR)
+                    const baris2Y = yPos + lineHeightMm;
+                    doc.text("Pada Tanggal", rightColX, baris2Y); 
+                    doc.text(`: ${tglSK}`, rightColX + 24, baris2Y);
+                    doc.text("Mengetahui,", leftColX, baris2Y);
+                    
+                    // Baris 3: Jabatan
+                    const baris3Y = baris2Y + lineHeightMm;
+                    doc.text("Ketua Panitia Pelaksana,", rightColX, baris3Y);
+                    doc.text("Ketua K3S Kec. Sukamakmur,", leftColX, baris3Y);
+                    
+                    // Baris 4 & 5 (Nama dan NIP)
+                    const baris4Y = baris3Y + (lineHeightMm * 4.5); 
+                    const baris5Y = baris4Y + lineHeightMm;
+
+                    // Cetak Nama dan NIP terlebih dahulu agar TTD menumpang di depan tulisan
+                    doc.setFont("helvetica", "bold");
+                    doc.text(cert.namaK3S || "_______________________", leftColX, baris4Y);
+                    doc.text(cert.namaKetua || "_______________________", rightColX, baris4Y);
+                    doc.setFont("helvetica", "normal");
+                    doc.text(`NIP. ${cert.nipK3S || '-'}`, leftColX, baris5Y);
+                    doc.text(`NIP. ${cert.nipKetua || '-'}`, rightColX, baris5Y);
+
+                    // Tanda Tangan Menumpang Teks (Rasio Proporsional & Digeser 5mm ke kiri)
+                    const ttdW = 45; // Lebar (panjang horizontal) patokan diset 45 mm (4.5 cm)
+                    const imgY = baris3Y - 2; // Y diletakkan sedikit di atas area kosong
+                    
+                    if (cert.ttdK3S) {
+                        try {
+                            const propsK3S = doc.getImageProperties(cert.ttdK3S);
+                            // Kalkulasi tinggi proporsional otomatis
+                            const ttdHK3S = (propsK3S.height / propsK3S.width) * ttdW; 
+                            doc.addImage(cert.ttdK3S, 'PNG', leftColX - 5, imgY, ttdW, ttdHK3S);
+                        } catch(e) { console.warn("Gagal merender proporsi TTD K3S"); }
+                    }
+                    
+                    if (cert.ttdKetua) {
+                        try {
+                            const propsKetua = doc.getImageProperties(cert.ttdKetua);
+                            // Kalkulasi tinggi proporsional otomatis
+                            const ttdHKetua = (propsKetua.height / propsKetua.width) * ttdW; 
+                            doc.addImage(cert.ttdKetua, 'PNG', rightColX - 5, imgY, ttdW, ttdHKetua);
+                        } catch(e) { console.warn("Gagal merender proporsi TTD Panitia"); }
+                    }
+
+                    return baris5Y + lineHeightMm;
+                };
 
                 // ==========================================
                 // HALAMAN 1: SURAT KEPUTUSAN UTAMA
                 // ==========================================
-                
-                // Kop Surat (Margin Atas 10mm)
-                if(logoB64) doc.addImage(logoB64, 'PNG', margin, margin, contentWidth, 30); 
+                if(logoB64) doc.addImage(logoB64, 'PNG', marginX, marginY, contentWidth, 30); 
                 doc.setLineWidth(0.8); 
-                doc.line(margin, 42, pageWidth - margin, 42); // Garis margin kiri ke kanan
-                
-                // Judul (Rata Tengah)
-                doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-                doc.text("SURAT KEPUTUSAN KETUA PANITIA", centerX, 52, { align: "center" });
-                doc.text("LOMBA TINGKAT KECAMATAN SUKAMAKMUR TAHUN 2026", centerX, 58, { align: "center" });
-                doc.setFont("helvetica", "normal"); doc.setFontSize(11);
-                doc.text(`Nomor: ${noSK}`, centerX, 64, { align: "center" });
+                const lineY = marginY + 32;
+                doc.line(marginX, lineY, pageWidth - marginX, lineY); 
 
-                doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-                doc.text("TENTANG", centerX, 76, { align: "center" });
-                doc.text("PENETAPAN JUARA I, II, DAN III", centerX, 82, { align: "center" });
-                doc.text("LOMBA TINGKAT KECAMATAN SUKAMAKMUR TAHUN 2026", centerX, 88, { align: "center" });
+                // Pengaturan Font Title (12pt)
+                const fontSizeTitle = 12;
+                const fontSizeTitleMm = fontSizeTitle * 0.352777778;
+                const spacing15Mm = fontSizeTitleMm * 1.5; // Jarak 1.5 sebelum judul
+                const spacing13Mm = fontSizeTitleMm * 1.3; // Spasi 1.3 antar baris judul
 
-                let curY = 100;
-                doc.setFontSize(10);
-                
-                // Helper untuk menulis baris dengan Rata Kanan Kiri (Justify)
+                doc.setFont("helvetica", "bold"); 
+                doc.setFontSize(fontSizeTitle);
+
+                // Baris 1: SURAT KEPUTUSAN (Jarak 1.5 dari garis)
+                let titleY = lineY + spacing15Mm;
+                doc.text("SURAT KEPUTUSAN KETUA PANITIA", centerX, titleY, { align: "center" });
+
+                // Baris 2: LOMBA TINGKAT... (Spasi 1.3)
+                titleY += spacing13Mm;
+                doc.text("LOMBA TINGKAT KECAMATAN SUKAMAKMUR TAHUN 2026", centerX, titleY, { align: "center" });
+
+                // Baris 3: Nomor (Spasi 1.3)
+                titleY += spacing13Mm;
+                doc.setFont("helvetica", "normal"); 
+                doc.setFontSize(11);
+                doc.text(`Nomor: ${noSK}`, centerX, titleY, { align: "center" });
+
+                // Bagian TENTANG (Spasi 1.3 dari baris sebelumnya)
+                titleY += spacing13Mm * 1.5; // Memberi sedikit jeda visual sebelum blok 'TENTANG'
+                doc.setFont("helvetica", "bold"); 
+                doc.setFontSize(12);
+                doc.text("TENTANG", centerX, titleY, { align: "center" });
+
+                titleY += spacing13Mm;
+                doc.text("PENETAPAN JUARA I, II, DAN III", centerX, titleY, { align: "center" });
+
+                titleY += spacing13Mm;
+                doc.text("LOMBA TINGKAT KECAMATAN SUKAMAKMUR TAHUN 2026", centerX, titleY, { align: "center" });
+
+                // Update curY untuk memulai isi surat
+                let curY = titleY + (fontSizeMm * 1.3 * 2); 
+
                 const writeJustifiedRow = (label, prefix, text) => {
-                    const labelWidth = 35;
+                    const labelWidth = 32; 
                     const prefixWidth = 8;
-                    const textStartX = margin + labelWidth + prefixWidth;
-                    const textMaxWidth = pageWidth - margin - textStartX;
+                    const textStartX = marginX + labelWidth + prefixWidth;
+                    const textMaxWidth = contentWidth - labelWidth - prefixWidth;
+
+                    // 1. Bersihkan teks dari spasi ganda/enter tersembunyi
+                    const cleanText = text.replace(/\s+/g, ' ').trim();
+
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(10);
+
+                    // 2. Filter baris kosong agar hitungan tinggi akurat
+                    let splitText = doc.splitTextToSize(cleanText, textMaxWidth).filter(t => t.trim() !== '');
+                    
+                    // Hitung tinggi berdasarkan jumlah baris murni
+                    let requiredHeight = splitText.length * lineHeightMm;
+
+                    if (curY + requiredHeight > bottomMarginY) { 
+                        doc.addPage(); 
+                        curY = marginY + 10; 
+                    }
 
                     if(label) {
                         doc.setFont("helvetica", "bold");
-                        doc.text(label, margin, curY); 
-                        doc.text(":", margin + 30, curY);
+                        doc.text(label, marginX, curY); 
+                        doc.text(":", marginX + 30, curY);
                     }
                     doc.setFont("helvetica", "normal");
-                    if (prefix) doc.text(prefix, margin + 33, curY);
+                    if (prefix) doc.text(prefix, marginX + 33, curY);
                     
-                    // Rata Kanan Kiri (Justify) menggunakan splitTextToSize + align justify
-                    let splitText = doc.splitTextToSize(text, textMaxWidth);
-                    doc.text(splitText, textStartX, curY, { maxWidth: textMaxWidth, align: "justify" });
-                    
-                    // Update posisi Y berdasarkan jumlah baris teks
-                    curY += (splitText.length * 5) + 2;
+                    // 3. Masukkan String (cleanText), BUKAN array, agar jsPDF me-render rata kanan-kiri dengan sempurna
+                    doc.text(cleanText, textStartX, curY, { 
+                        maxWidth: textMaxWidth, 
+                        align: "justify", 
+                        lineHeightFactor: lineHeightFactor // Mewarisi 1.3 dari setting atas
+                    });
+
+                    // 4. Maju murni setinggi baris teks (tidak ada tambahan baris kosong ganda)
+                    curY += requiredHeight; 
                 };
 
-                // Isi Konten Menimbang & Mengingat (Justify)
+                // Eksekusi semua baris (otomatis rapat dengan ritme spasi 1,3)
                 writeJustifiedRow("MENIMBANG", "a.", "Bahwa untuk menetapkan keseluruhan hasil pelaksanaan Seleksi Peserta Festival dan Lomba Seni Sastra Siswa Nasional (FLS3N), Festival Tunas Bahasa Ibu (FTBI), Olimpiade Olahraga Siswa Nasional (O2SN), Olahraga Tradisional (Oltrad), dan Pentas PAI Tingkat Kecamatan Sukamakmur Tahun 2026, di pandang perlu untuk menetapkan Juara I, II, III.");
                 writeJustifiedRow("", "b.", "Bahwa Peserta Lomba dan nama-nama yang tercantum dalam lampiran Surat Keputusan ini ditetapkan sebagai Juara I, II, dan III pada masing-masing cabang serta bila diperlukan akan dikirimkan ke lomba tingkat kabupaten.");
-                
-                curY += 2;
+
                 writeJustifiedRow("MENGINGAT", "1.", "Undang-undang RI Nomor 20 tahun 2003 tentang Sistem Pendidikan Nasional;");
                 writeJustifiedRow("", "2.", "Peraturan Pemerintah (PP) Nomor 57 Tahun 2021 tentang Standar Nasional Pendidikan;");
                 writeJustifiedRow("", "3.", "Peraturan Pemerintah (PP) Nomor 46 Tahun 2024 tentang Penyelenggaraan Keolahragaan;");
                 writeJustifiedRow("", "4.", "Peraturan Menteri Pendidikan Nasional No. 34 tahun 2006 tentang Pembinaan Peserta Didik yang Memiliki Potensi Kecerdasan dan/atau Bakat Istimewa; dan");
                 writeJustifiedRow("", "5.", "Peraturan Menteri Pendidikan Nasional No. 39 tahun 2008 tentang Pembinaan Prestasi Siswa.");
 
-                curY += 2;
                 writeJustifiedRow("MEMPERHATIKAN", "", "Hasil keputusan Dewan Juri Lomba Tingkat Kecamatan Sukamakmur Tahun 2026.");
 
-                curY += 4;
+                if (curY + 15 > bottomMarginY) { doc.addPage(); curY = marginY + 15; }
                 doc.setFont("helvetica", "bold");
                 doc.text("MEMUTUSKAN", centerX, curY, { align: "center" });
-                curY += 8;
+
+                // Turun satu baris (spasi 1.3) setelah judul MEMUTUSKAN
+                curY += lineHeightMm;
 
                 writeJustifiedRow("MENETAPKAN", "", "Surat Keputusan Ketua Panitia Lomba Tingkat Kecamatan Sukamakmur Tentang Penetapan Juara I, II, dan III Lomba FLS3N, FTBI, O2SN, Oltrad, dan Pentas PAI Tingkat Kecamatan Sukamakmur Tahun 2026.");
-                curY += 1;
                 writeJustifiedRow("PERTAMA", "", "Menetapkan peserta FLS3N, FTBI, O2SN, Oltrad, dan Pentas PAI Tingkat Kecamatan Sukamakmur Tahun 2026 sebagaimana tercantum dalam daftar lampiran sebagai Juara I, II dan III pada masing-masing cabang.");
-                curY += 1;
                 writeJustifiedRow("KEDUA", "", "Keputusan ini berlaku pada saat ditetapkan dan tidak dapat diganggu gugat.");
 
-                // Pengesahan (2 Kolom)
-                curY += 10;
-                doc.setFont("helvetica", "normal");
-                doc.text("Ditetapkan di", 130, curY); doc.text(": Sukamakmur", 155, curY);
-                curY += 5;
-                doc.text("Pada Tanggal", 130, curY); doc.text(`: ${tglSK}`, 155, curY);
+                if (curY + 45 > bottomMarginY) { doc.addPage(); curY = marginY + 10; }
                 
-                curY += 12;
-                const ttdY = curY;
-                const leftColX = margin + (contentWidth / 4); // Tengah kolom kiri
-                const rightColX = pageWidth - margin - (contentWidth / 4); // Tengah kolom kanan
+                // Beri jeda 1 baris sebelum blok tanda tangan agar tidak menempel pada tulisan terakhir
+                curY += lineHeightMm; 
+                drawSignatureBlock(curY);
 
-                doc.text("Mengetahui,", leftColX, ttdY, { align: "center" });
-                doc.text("Ketua K3S Kec. Sukamakmur,", leftColX, ttdY + 5, { align: "center" });
-                doc.text("Ketua Panitia,", rightColX, ttdY + 5, { align: "center" });
+                // ==========================================
+                // HELPER: HEADER LAMPIRAN (Rapi & Bergaris Bawah)
+                // ==========================================
+                const drawLampiranHeader = (lampiranNum, lampiranTitle) => {
+                    doc.setFontSize(10); doc.setFont("helvetica", "normal");
+                    doc.text(`Lampiran ${lampiranNum}`, marginX, marginY + 10); 
+                    doc.text(":", marginX + 22, marginY + 10);
+    
+                // Batas lebar teks untuk judul adalah contentWidth dikurangi jarak awal x (25mm)
+                const titleMaxWidth = contentWidth - 25; 
+                    let splitTitle = doc.splitTextToSize(lampiranTitle, titleMaxWidth).map(t => t.trim());
+    
+                // Perbaikan: Masukkan maxWidth ke dalam parameter opsi
+                doc.text(splitTitle, marginX + 25, marginY + 10, { 
+                maxWidth: titleMaxWidth, 
+                align: "justify", 
+                lineHeightFactor: lineHeightFactor 
+                });
+    
+                let headerY = marginY + 10 + (splitTitle.length * lineHeightMm);
+                    doc.text("Nomor", marginX, headerY); doc.text(":", marginX + 22, headerY); doc.text(noSK, marginX + 25, headerY);
+    
+                headerY += lineHeightMm;
+                    doc.text("Tanggal", marginX, headerY); doc.text(":", marginX + 22, headerY); doc.text(tglSK, marginX + 25, headerY);
+    
+                headerY += 3;
+                    doc.setLineWidth(0.3);
+                    doc.line(marginX, headerY, pageWidth - marginX, headerY); 
+                    return headerY + 8;
+                };
+
+                // Helper Vertikal Senter & Pastikan Teks Array selalu Rata Kiri Sempurna
+                const printCellLeft = (textArr, x, yCenter) => {
+                    const blockHeight = (textArr.length - 1) * lineHeightMm;
+                    doc.text(textArr, x, yCenter - (blockHeight / 2), { align: "left", baseline: "middle", lineHeightFactor: lineHeightFactor });
+                };
+
+                // ==========================================
+                // HALAMAN: LAMPIRAN I (DAFTAR JUARA)
+                // ==========================================
+                doc.addPage();
+                let lampiranY = drawLampiranHeader("I", "Surat Keputusan Ketua Panitia Lomba Tingkat Kecamatan Tentang Penetapan Juara I, II dan III Lomba Tingkat Kecamatan Sukamakmur Tahun 2026");
+
+                doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+                doc.text("DAFTAR JUARA FLS3N, FTBI, O2SN, OLTRAD, DAN PENTAS PAI", centerX, lampiranY + 5, { align: "center" });
+                doc.text("TINGKAT KECAMATAN SUKAMAKMUR TAHUN 2026", centerX, lampiranY + 11, { align: "center" });
+
+                let tableY = lampiranY + 18;
                 
-                // Tanda Tangan Gambar (Jika Ada)
-                if (cert.ttdK3S) doc.addImage(cert.ttdK3S, 'PNG', leftColX - 20, ttdY + 7, 40, 20);
-                if (cert.ttdKetua) doc.addImage(cert.ttdKetua, 'PNG', rightColX - 20, ttdY + 7, 40, 20);
+                // Koordinat Tabel Diperbarui (Lebar Kolom Nilai Dikurangi)
+                const xNo = marginX;                 // 15
+                const xCabang = xNo + 10;            // 25
+                const xJuara = xCabang + 45;         // 70
+                const xNama = xJuara + 13;           // 83 (Lebar Juara = 13)
+                const xSekolah = xNama + 55;         // 138 (Lebar Nama = 55)
+                const xNilai = xSekolah + 42;        // 180 (Lebar Sekolah = 42)
+                const xEnd = xNilai + 15;            // 195 (Lebar Nilai = 15) -> Total = 180mm
+
+                const drawLampiran1Header = (y) => {
+                    doc.setFillColor(230,230,230); doc.setLineWidth(0.3);
+                    doc.rect(marginX, y, contentWidth, 8, 'FD');
+                    doc.setFontSize(9); doc.setFont("helvetica", "bold");
+                    
+                    doc.text("NO", (xNo + xCabang)/2, y+4.5, {align:"center", baseline:"middle"});
+                    doc.text("CABANG LOMBA", (xCabang + xJuara)/2, y+4.5, {align:"center", baseline:"middle"});
+                    doc.text("JUARA", (xJuara + xNama)/2, y+4.5, {align:"center", baseline:"middle"});
+                    doc.text("NAMA", (xNama + xSekolah)/2, y+4.5, {align:"center", baseline:"middle"});
+                    doc.text("ASAL SEKOLAH", (xSekolah + xNilai)/2, y+4.5, {align:"center", baseline:"middle"});
+                    doc.text("NILAI", (xNilai + xEnd)/2, y+4.5, {align:"center", baseline:"middle"});
+                    
+                    [xNo, xCabang, xJuara, xNama, xSekolah, xNilai, xEnd].forEach(x => doc.line(x, y, x, y+8));
+                    doc.setFont("helvetica", "normal");
+                };
+
+                drawLampiran1Header(tableY);
+                tableY += 8;
+                let no1 = 1;
+
+                const categoryOrder = ['FLS3N', 'FTBI', 'O2SN & Oltrad', 'Pentas PAI'];
+                let sortedDataBA = [...DATA_BERITA_ACARA].sort((a,b) => {
+                    const catA = a.cabang.split(' - ')[0]; const catB = b.cabang.split(' - ')[0];
+                    if (catA !== catB) return categoryOrder.indexOf(catA) - categoryOrder.indexOf(catB);
+                    return a.cabang.localeCompare(b.cabang);
+                });
+
+                sortedDataBA.forEach(ba => {
+                    let detail = {}; try { detail = JSON.parse(ba.catatan); } catch(e){}
+                    const pj = (s) => s ? s.split('|') : ['-','-'];
+                    const j1 = pj(detail.juara1); const j2 = pj(detail.juara2); const j3 = pj(detail.juara3);
+                    const s1 = detail.skor1 || '-'; const s2 = detail.skor2 || '-'; const s3 = detail.skor3 || '-';
+
+                    let isTeam = false;
+                    Object.keys(LOMBA_CATEGORIES).forEach(kat => {
+                        const match = LOMBA_CATEGORIES[kat].find(l => `${kat} - ${l.name}` === ba.cabang);
+                        if(match && match.count > 1) isTeam = true;
+                    });
+
+                    const getNamaPeserta = (jData) => {
+                        if (!jData || jData[0] === '-') return '-';
+                        if (isTeam) {
+                            const members = DATA_REGISTRATIONS.filter(r => r.namaSekolah === jData[1] && r.lomba === ba.cabang && r.status === 'terdaftar')
+                                                              .map(r => r.namaPeserta);
+                            if (members.length > 0) return members.join('\n'); 
+                        }
+                        return jData[0];
+                    };
+
+                    const nama1 = getNamaPeserta(j1);
+                    const nama2 = getNamaPeserta(j2);
+                    const nama3 = getNamaPeserta(j3);
+
+                    // Lebar area teks (dikurangi padding 4mm total)
+                    const wCabang = 41; const wNama = 51; const wSekolah = 38;
+                    
+                    // .map(t=>t.trim()) penting untuk mencegah baris ke-2 dan ke-3 menjorok ke dalam akibat spasi berlebih
+                    let splitC = doc.splitTextToSize(ba.cabang, wCabang).map(t => t.trim());
+                    let splitN1 = doc.splitTextToSize(nama1, wNama).map(t => t.trim());
+                    let splitS1 = doc.splitTextToSize(j1[1] || '-', wSekolah).map(t => t.trim());
+                    let splitN2 = doc.splitTextToSize(nama2, wNama).map(t => t.trim());
+                    let splitS2 = doc.splitTextToSize(j2[1] || '-', wSekolah).map(t => t.trim());
+                    let splitN3 = doc.splitTextToSize(nama3, wNama).map(t => t.trim());
+                    let splitS3 = doc.splitTextToSize(j3[1] || '-', wSekolah).map(t => t.trim());
+                    
+                    const cellPad = 4; // Total padding atas bawah
+                    
+                    let h1 = Math.max(splitN1.length, splitS1.length) * lineHeightMm + cellPad;
+                    let h2 = Math.max(splitN2.length, splitS2.length) * lineHeightMm + cellPad;
+                    let h3 = Math.max(splitN3.length, splitS3.length) * lineHeightMm + cellPad;
+                    
+                    if(h1 < 8) h1 = 8; if(h2 < 8) h2 = 8; if(h3 < 8) h3 = 8;
+
+                    let blockH = h1 + h2 + h3;
+                    let minCH = splitC.length * lineHeightMm + cellPad; 
+                    if (blockH < minCH) { h3 += (minCH - blockH); blockH = minCH; } 
+
+                    if (tableY + blockH > bottomMarginY) {
+                        doc.addPage(); tableY = marginY + 10; 
+                        drawLampiran1Header(tableY); tableY += 8;
+                    }
+
+                    // Gambar Kotak Luar & Garis Vertikal
+                    doc.rect(marginX, tableY, contentWidth, blockH);
+                    [xNo, xCabang, xJuara, xNama, xSekolah, xNilai, xEnd].forEach(x => doc.line(x, tableY, x, tableY+blockH));
+
+                    // Garis Horizontal pemisah sub-juara
+                    doc.line(xJuara, tableY + h1, xEnd, tableY + h1);
+                    doc.line(xJuara, tableY + h1 + h2, xEnd, tableY + h1 + h2);
+
+                    doc.setFontSize(9);
+                    
+                    // Kolom NO (Senter Vertikal & Horizontal)
+                    doc.text(String(no1++), (xNo + xCabang)/2, tableY + (blockH/2), {align:"center", baseline:"middle"});
+                    
+                    // Kolom CABANG LOMBA (Rata Kiri, Senter Vertikal)
+                    doc.setFont("helvetica", "bold");
+                    printCellLeft(splitC, xCabang + 2, tableY + (blockH/2));
+                    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+
+                    // BARIS JUARA 1
+                    let ty1 = tableY + (h1/2);
+                    doc.text("1", (xJuara + xNama)/2, ty1, {align:"center", baseline:"middle"});
+                    printCellLeft(splitN1, xNama + 2, ty1);
+                    printCellLeft(splitS1, xSekolah + 2, ty1);
+                    doc.text(s1, (xNilai + xEnd)/2, ty1, {align:"center", baseline:"middle"});
+
+                    // BARIS JUARA 2
+                    let ty2 = tableY + h1 + (h2/2);
+                    doc.text("2", (xJuara + xNama)/2, ty2, {align:"center", baseline:"middle"});
+                    printCellLeft(splitN2, xNama + 2, ty2);
+                    printCellLeft(splitS2, xSekolah + 2, ty2);
+                    doc.text(s2, (xNilai + xEnd)/2, ty2, {align:"center", baseline:"middle"});
+
+                    // BARIS JUARA 3
+                    let ty3 = tableY + h1 + h2 + (h3/2);
+                    doc.text("3", (xJuara + xNama)/2, ty3, {align:"center", baseline:"middle"});
+                    printCellLeft(splitN3, xNama + 2, ty3);
+                    printCellLeft(splitS3, xSekolah + 2, ty3);
+                    doc.text(s3, (xNilai + xEnd)/2, ty3, {align:"center", baseline:"middle"});
+
+                    tableY += blockH;
+                });
+
+                if (tableY + 45 > bottomMarginY) { doc.addPage(); tableY = marginY + 10; }
+                tableY += 10; // Jarak sebelum pengesahan
+                drawSignatureBlock(tableY);
+
+                // ==========================================
+                // HALAMAN 3: LAMPIRAN II (KLASEMEN MEDALI)
+                // ==========================================
+                doc.addPage();
+                let lampiran2Y = drawLampiranHeader("II", "Surat Keputusan Ketua Panitia Lomba Tingkat Kecamatan Tentang Penetapan Juara I, II dan III Lomba Tingkat Kecamatan Sukamakmur Tahun 2026");
+
+                doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+                doc.text("KLASEMEN PEROLEHAN MEDALI GUGUS", centerX, lampiran2Y + 15, { align: "center" });
                 
+                const medaliData = calculateMedali();
+                let curY3 = lampiran2Y + 25; 
+                
+                const kxNo = marginX;
+                const kxGugus = marginX + 15;
+                const kxEmas = marginX + 75;
+                const kxPerak = marginX + 100;
+                const kxPerunggu = marginX + 125;
+                const kxKet = marginX + 155;
+                const kxEnd = marginX + 180;
+
+                const drawLampiran2Header = (y) => {
+                    doc.setFontSize(9); doc.setFillColor(254,235,200);
+                    doc.rect(marginX, y, contentWidth, 12, 'FD'); 
+                    
+                    doc.setFont("helvetica", "bold");
+                    doc.text("NO", (kxNo + kxGugus)/2, y+6, {align:"center", baseline:"middle"});
+                    doc.text("NAMA GUGUS", (kxGugus + kxEmas)/2, y+6, {align:"center", baseline:"middle"});
+                    
+                    // Super Header Medali
+                    doc.text("PEROLEHAN MEDALI", (kxEmas + kxKet)/2, y+3.5, {align:"center", baseline:"middle"});
+                    doc.line(kxEmas, y+6, kxKet, y+6);
+                    
+                    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+                    doc.text("Emas", (kxEmas + kxPerak)/2, y+9, {align:"center", baseline:"middle"});
+                    doc.text("Perak", (kxPerak + kxPerunggu)/2, y+9, {align:"center", baseline:"middle"});
+                    doc.text("Perunggu", (kxPerunggu + kxKet)/2, y+9, {align:"center", baseline:"middle"});
+                    
+                    doc.setFillColor(234, 179, 8); doc.circle((kxEmas + kxPerak)/2 - 8, y+9, 1.5, 'F');
+                    doc.setFillColor(156, 163, 175); doc.circle((kxPerak + kxPerunggu)/2 - 9, y+9, 1.5, 'F');
+                    doc.setFillColor(217, 119, 6); doc.circle((kxPerunggu + kxKet)/2 - 10, y+9, 1.5, 'F');
+                    
+                    doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+                    doc.text("KETERANGAN", (kxKet + kxEnd)/2, y+6, {align:"center", baseline:"middle"}); 
+                    
+                    [kxNo, kxGugus, kxEmas, kxPerak, kxPerunggu, kxKet, kxEnd].forEach((x,i) => {
+                        if(i > 2 && i < 5) doc.line(x, y+6, x, y + 12);
+                        else doc.line(x, y, x, y + 12);
+                    });
+                };
+
+                drawLampiran2Header(curY3);
+                curY3 += 12; 
+                
+                let sumE = 0, sumP = 0, sumPr = 0;
+
+                medaliData.forEach((m, i) => {
+                    if (curY3 > bottomMarginY - 15) {
+                        doc.addPage(); curY3 = marginY + 10;
+                        drawLampiran2Header(curY3);
+                        curY3 += 12; 
+                    }
+
+                    doc.rect(marginX, curY3, contentWidth, 8);
+                    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+                    doc.text(String(i+1), (kxNo + kxGugus)/2, curY3+4, {align:"center", baseline:"middle"});
+                    doc.text(m.nama, kxGugus + 3, curY3+4, {baseline:"middle"});
+                    
+                    doc.text(String(m.emas), (kxEmas + kxPerak)/2, curY3+4, {align:"center", baseline:"middle"});
+                    doc.text(String(m.perak), (kxPerak + kxPerunggu)/2, curY3+4, {align:"center", baseline:"middle"});
+                    doc.text(String(m.perunggu), (kxPerunggu + kxKet)/2, curY3+4, {align:"center", baseline:"middle"});
+                    
+                    if(i === 0) {
+                        doc.setFont("helvetica", "bold"); doc.setTextColor(234,88,12);
+                        doc.text("Juara Umum", (kxKet + kxEnd)/2, curY3+4, {align:"center", baseline:"middle"}); 
+                        doc.setFont("helvetica", "normal"); doc.setTextColor(0,0,0);
+                    }
+                    
+                    [kxNo, kxGugus, kxEmas, kxPerak, kxPerunggu, kxKet, kxEnd].forEach(x => doc.line(x, curY3, x, curY3 + 8));
+                    curY3 += 8;
+                    
+                    sumE += m.emas; sumP += m.perak; sumPr += m.perunggu;
+                });
+
+                // Row Total Keseluruhan
+                doc.setFillColor(230, 230, 230);
+                doc.rect(marginX, curY3, contentWidth, 8, 'FD');
                 doc.setFont("helvetica", "bold");
-                doc.text(cert.namaK3S || "_______________________", leftColX, ttdY + 35, { align: "center" });
-                doc.text(cert.namaKetua || "_______________________", rightColX, ttdY + 35, { align: "center" });
-                doc.setFont("helvetica", "normal");
-                doc.text(`NIP. ${cert.nipK3S || '-'}`, leftColX, ttdY + 40, { align: "center" });
-                doc.text(`NIP. ${cert.nipKetua || '-'}`, rightColX, ttdY + 40, { align: "center" });
+                doc.text("TOTAL KESELURUHAN", (kxNo + kxEmas)/2, curY3+4, {align:"center", baseline:"middle"});
+                doc.text(String(sumE), (kxEmas + kxPerak)/2, curY3+4, {align:"center", baseline:"middle"});
+                doc.text(String(sumP), (kxPerak + kxPerunggu)/2, curY3+4, {align:"center", baseline:"middle"});
+                doc.text(String(sumPr), (kxPerunggu + kxKet)/2, curY3+4, {align:"center", baseline:"middle"});
+                
+                [kxNo, kxEmas, kxPerak, kxPerunggu, kxKet, kxEnd].forEach(x => doc.line(x, curY3, x, curY3 + 8));
+                curY3 += 8;
 
-                // Lanjut ke Lampiran I & II (Script lampiran tetap sama seperti sebelumnya)
-                // ... (Script Halaman 2 dan 3 dilanjutkan di sini) ...
+                if (curY3 + 45 > bottomMarginY) { doc.addPage(); curY3 = marginY + 10; }
+                curY3 += 10;
+                drawSignatureBlock(curY3);
 
                 doc.save('SK_Penetapan_Juara_Lomba_2026.pdf');
                 closeModal(); showModal('Sukses', 'SK Penetapan berhasil diunduh.', 'success', true, 2000);
